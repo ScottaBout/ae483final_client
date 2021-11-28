@@ -196,6 +196,7 @@ class SimpleClient:
         with open(filename, 'w') as outfile:
             json.dump(self.data, outfile, indent=4, sort_keys=False)
 
+
 # Global client object
 client = SimpleClient(uri, use_controller=True, use_observer=True)
 
@@ -206,7 +207,7 @@ def send_target_to_drone():
     while send_to_drone:
         client.cf.commander.send_position_setpoint(drone_data.target_x, drone_data.target_y, drone_data.target_z, 0)
         time.sleep(0.1)
-    client.move()
+    client.move(0, 0, 0, 0, 5)
     client.stop(5)
     client.disconnect()
 
@@ -219,7 +220,7 @@ app = Flask(__name__)
 
 
 @app.route("/drone_target")
-def drone_position():
+def drone_target():
     """
     Request coming from brain containing target x, y, and z coordinates
     :return:
@@ -231,6 +232,12 @@ def drone_position():
     z_str = request.args.get("target_z")  # gets the ‘z’ argument as str
     drone_data.target_z = float(z_str)  # convert string to float
     return Response('ok')
+
+
+@app.route('/stop')
+def stop():
+    global send_to_drone
+    send_to_drone = False
 
 
 if __name__ == '__main__':
