@@ -10,10 +10,11 @@ import requests
 from flask import Flask, request, Response
 from drone_data import DroneData
 
+logging.basicConfig(level=logging.INFO)
+
 # Specify the uri of the drone to which we want to connect (if your radio
 # channel is X, the uri should be 'radio://0/X/2M/E7E7E7E7E7')
 uri = 'radio://0/35/2M/E7E7E7E7E7'
-uri2 = 'radio://0/13/2M/E7E7E7E7E6'
 IP_OF_BRAIN = ''  # TODO enter ip of brain
 
 # Specify the variables we want to log (all at 100 Hz)
@@ -61,7 +62,7 @@ variables = [
 ]
 
 drone_data = DroneData()
-
+send_to_drone = True
 
 class SimpleClient:
     def __init__(self, uri, use_controller=False, use_observer=False):
@@ -135,23 +136,27 @@ class SimpleClient:
         self.is_connected = False
 
     def log_data(self, timestamp, data, logconf):
+        logging.info('logging and sending data')
         for v in logconf.variables:
             self.data[v.name]['time'].append(timestamp)
             self.data[v.name]['data'].append(data[v.name])
             if v.name == 'ae483log.o_x':
-                drone_data.x = data[v.name]
+                drone_data.x = self.data[v]['data']
             if v.name == 'ae483log.o_y':
-                drone_data.y = data[v.name]
+                drone_data.y = self.data[v]['data']
             if v.name == 'ae483log.o_z':
-                drone_data.z = data[v.name]
+                drone_data.z = self.data[v]['data']
         payload = drone_data.string_dict()
-        payload['drone_id'] = '0'
-        response = requests.get(f'http://{IP_OF_BRAIN}:8080/drone_data', params=payload)
-        if response.status_code != 200:
-            print(f'Error code sending request {response.status_code}')
-        else:
-            print(f'url: {response.url}')
-            print(f'response: {response.content}')
+        payload['drone_id'] = '0'  # TODO change drone id
+        try:
+            response = requests.get(f'http://{IP_OF_BRAIN}:8080/drone_data', params=payload)
+            if response.status_code != 200:
+                print(f'Error code sending request {response.status_code}')
+            else:
+                print(f'url: {response.url}')
+                print(f'response: {response.content}')
+        except requests.exceptions.RequestException:
+            logging.info('catch error while receiving')
 
     def log_error(self, logconf, msg):
         print(f'Error when logging {logconf}: {msg}')
@@ -197,26 +202,17 @@ class SimpleClient:
             json.dump(self.data, outfile, indent=4, sort_keys=False)
 
 
-# Global client object
-client = SimpleClient(uri, use_controller=True, use_observer=True)
-
-send_to_drone = True
-
-
-def send_target_to_drone():
+def send_target_to_drone(client):
+    logging.info('sending target to drone')
     while send_to_drone:
         client.cf.commander.send_position_setpoint(drone_data.target_x, drone_data.target_y, drone_data.target_z, 0)
         time.sleep(0.1)
-    client.move(0, 0, 0, 0, 5)
+    client.move(0, 0, 0.5, 0, 5)
     client.stop(5)
     client.disconnect()
-
-
-thread = threading.Thread(target=send_target_to_drone)
-thread.start()
-
 # Web server listening to brain
 app = Flask(__name__)
+logging.info('flask server initiated')
 
 
 @app.route("/drone_target")
@@ -225,29 +221,44 @@ def drone_target():
     Request coming from brain containing target x, y, and z coordinates
     :return:
     """
+    logging.info('drone target')
     x_str = request.args.get("target_x")  # gets the 'x’ argument as str
     drone_data.target_x = float(x_str)  # convert string to float
     y_str = request.args.get("target_y")  # gets the ‘y’ argument as str
     drone_data.target_y = float(y_str)  # convert string to float
     z_str = request.args.get("target_z")  # gets the ‘z’ argument as str
     drone_data.target_z = float(z_str)  # convert string to float
+    logging.info(f'drone target: {x_str}, {y_str}, {z_str}')
     return Response('ok')
 
 
-@app.route('/stop')
-def stop():
+@app.route('/end')
+def end():
+    """
+    Ends program
+    :return:
+    """
+    logging.info('ending...')
     global send_to_drone
     send_to_drone = False
 
 
 if __name__ == '__main__':
+    logging.info('main')
     # Initialize everything
-    logging.basicConfig(level=logging.ERROR)
+    # logging.basicConfig(level=logging.ERROR)
     cflib.crtp.init_drivers()
 
-    # Create and start the Client that will connect to the drone
+    #  Create and start the Client that will connect to the drone
+    client = SimpleClient(uri, use_controller=True, use_observer=True)
     while not client.is_connected:
         print(f' ... connecting ...')
         time.sleep(1.0)
+    send_target_to_drone(client)
 
-    app.run()
+    thread = threading.Thread(target=send_target_to_drone, args=client)
+    thread.start()
+    logging.info('threading')
+
+    app.run(host='0.0.0.0', port=8080, debug=True)
+    logging.info('starting web server on port 8080')

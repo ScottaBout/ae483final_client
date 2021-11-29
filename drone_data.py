@@ -13,8 +13,10 @@ class DroneData:
         self.target_z = 0
         self.opti_x = 0  # brain x
         self.opti_y = 0  # brain y
+        self.opti_z = 0  # brain z
         self.start_x = None  # brain starting x
         self.start_y = None  # brain starting y
+        self.start_z = None  # brain starting z
 
     def string_dict(self):
         return {
@@ -36,7 +38,7 @@ class DroneData:
         return self.opti_y
 
     def real_z(self):
-        return self.z
+        return self.opti_z
 
     def distance(self, other):
         return math.sqrt((self.real_x() - other.real_x()) ** 2 + (self.real_y() - other.real_y()) ** 2 + (
