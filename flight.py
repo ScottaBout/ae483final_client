@@ -141,11 +141,11 @@ class SimpleClient:
             self.data[v.name]['time'].append(timestamp)
             self.data[v.name]['data'].append(data[v.name])
             if v.name == 'ae483log.o_x':
-                drone_data.x = self.data[v]['data']
+                drone_data.x = data[v.name]
             if v.name == 'ae483log.o_y':
-                drone_data.y = self.data[v]['data']
+                drone_data.y = data[v.name]
             if v.name == 'ae483log.o_z':
-                drone_data.z = self.data[v]['data']
+                drone_data.z = data[v.name]
         payload = drone_data.string_dict()
         payload['drone_id'] = '0'  # TODO change drone id
         try:
