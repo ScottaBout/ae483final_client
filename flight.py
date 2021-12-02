@@ -64,6 +64,7 @@ variables = [
 drone_data = DroneData()
 send_to_drone = True
 
+
 class SimpleClient:
     def __init__(self, uri, use_controller=False, use_observer=False):
         self.init_time = time.time()
@@ -202,14 +203,6 @@ class SimpleClient:
             json.dump(self.data, outfile, indent=4, sort_keys=False)
 
 
-def send_target_to_drone(client):
-    logging.info('sending target to drone')
-    while send_to_drone:
-        client.cf.commander.send_position_setpoint(drone_data.target_x, drone_data.target_y, drone_data.target_z, 0)
-        time.sleep(0.1)
-    client.move(0, 0, 0.5, 0, 5)
-    client.stop(5)
-    client.disconnect()
 # Web server listening to brain
 app = Flask(__name__)
 logging.info('flask server initiated')
@@ -243,6 +236,17 @@ def end():
     send_to_drone = False
 
 
+def send_target_to_drone(client):
+    logging.info('sending target to drone')
+    while send_to_drone:
+        print('moving drone')
+        # client.cf.commander.send_position_setpoint(drone_data.target_x, drone_data.target_y, drone_data.target_z, 0)
+        client.move(drone_data.target_x, drone_data.target_y, drone_data.target_z, 0, 0.01)
+    client.move(0, 0, 0.5, 0, 5)
+    client.stop(5)
+    client.disconnect()
+
+
 if __name__ == '__main__':
     logging.info('main')
     # Initialize everything
@@ -254,9 +258,10 @@ if __name__ == '__main__':
     while not client.is_connected:
         print(f' ... connecting ...')
         time.sleep(1.0)
+    print('sending target to drone initiated')
     send_target_to_drone(client)
-
-    thread = threading.Thread(target=send_target_to_drone, args=client)
+    print('threading activated')
+    thread = threading.Thread(target=send_target_to_drone, args=(1,))
     thread.start()
     logging.info('threading')
 
