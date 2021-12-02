@@ -258,12 +258,10 @@ if __name__ == '__main__':
     while not client.is_connected:
         print(f' ... connecting ...')
         time.sleep(1.0)
-    print('sending target to drone initiated')
-    send_target_to_drone(client)
-    print('threading activated')
-    thread = threading.Thread(target=send_target_to_drone, args=(1,))
+    thread = threading.Thread(target=send_target_to_drone, args=(client,))
     thread.start()
     logging.info('threading')
 
-    app.run(host='0.0.0.0', port=8080, debug=True)
     logging.info('starting web server on port 8080')
+    app.run(host='0.0.0.0', port=8080, debug=True)
+
