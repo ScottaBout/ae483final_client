@@ -5,14 +5,13 @@ import time
 import cflib.crtp
 from flask import Flask, request, Response
 
-from drone_client import drone_data, BRAIN_IP, DRONE_ID, BRAIN_PORT, SimpleClient, CLIENT_PORT, uri
+from drone_client import drone_data, BRAIN_IP, DRONE_ID, BRAIN_PORT, SimpleClient, CLIENT_PORT, uri, MockClient
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
+TESTING = True
 
-
-
-
+send_to_drone = True  # as long as this is true, the client will send position set point updates to the drone
 
 # Web server listening to brain
 app = Flask(__name__)
@@ -67,10 +66,11 @@ if __name__ == '__main__':
 
         # Initialize everything
         # logging.basicConfig(level=logging.ERROR)
-        cflib.crtp.init_drivers()
+        if not TESTING:
+            cflib.crtp.init_drivers()
 
         #  Create and start the Client that will connect to the drone
-        client = SimpleClient(uri, use_controller=True, use_observer=True)
+        client = MockClient(uri, use_controller=True, use_observer=True) if TESTING else SimpleClient(uri, use_controller=True, use_observer=True)
         while not client.is_connected:
             logging.debug(f' ... connecting ...')
             time.sleep(1.0)

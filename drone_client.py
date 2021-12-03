@@ -1,5 +1,6 @@
 import json
 import logging
+import threading
 import time
 
 import numpy as np
@@ -12,14 +13,12 @@ from cflib.crazyflie.log import LogConfig
 from drone_data import DroneData
 
 uri = 'radio://0/35/2M/E7E7E7E7E7'
-BRAIN_IP = ''  # TODO enter ip of brain
-BRAIN_PORT = '8080'
+BRAIN_IP = '10.183.7.122'  # TODO enter ip of brain
+BRAIN_PORT = '8100'
 CLIENT_PORT = '8080'
 DRONE_ID = '0'
 
-
 drone_data = DroneData()
-send_to_drone = True  # as long as this is true, the client will send position set point updates to the drone
 
 
 # Specify the variables we want to log (all at 100 Hz)
@@ -67,7 +66,6 @@ variables = [
 ]
 
 
-
 class SimpleClient:
     def __init__(self, uri, use_controller=False, use_observer=False):
         self.init_time = time.time()
@@ -93,7 +91,7 @@ class SimpleClient:
         num_variables = 0
         for v in variables:
             num_variables += 1
-            if num_variables > 5:  # <-- could increase if you paid attention to types / sizes (max 30 bytes per packet)
+            if num_variables > 3:  # <-- could increase if you paid attention to types / sizes (max 30 bytes per packet)
                 num_variables = 0
                 self.logconfs.append(LogConfig(name=f'LogConf{len(self.logconfs)}', period_in_ms=10))
             self.data[v] = {'time': [], 'data': []}
@@ -141,6 +139,7 @@ class SimpleClient:
 
     def log_data(self, timestamp, data, logconf):
         logging.info('Logging data, sending to Brain if modified')
+        logging.debug(logconf.variables)
         modified = False  # will be set to true if x, y or z is modified
         for v in logconf.variables:
             self.data[v.name]['time'].append(timestamp)
@@ -214,3 +213,38 @@ class SimpleClient:
         with open(filename, 'w') as outfile:
             json.dump(self.data, outfile, indent=4, sort_keys=False)
 
+
+class MockClient(SimpleClient):
+    def __init__(self, uri, use_controller=False, use_observer=False):
+        super().__init__(uri, use_controller, use_observer)
+        self.is_connected = True
+        self.logconfs = []
+        my_data = {'ae483log.o_x': 1.2, 'ae483log.o_y': 3.7, 'ae483log.o_z': 0.72}
+        my_logconf = LogConfig(name='test', period_in_ms=500)
+        for v in my_data.keys():
+            my_logconf.add_variable(v, fetch_as='float')
+            self.data[v] = {'time': [], 'data': []}
+        self.logconfs.append(my_logconf)
+        thread = threading.Thread(target=simulate_log_update, args=(self,))
+        thread.start()
+
+    def stop(self, dt):
+        logging.info('Mock stop')
+
+    def move(self, x, y, z, yaw, dt):
+        logging.info('Mock move')
+        time.sleep(1.0)
+
+    def disconnect(self):
+        logging.info('Mock disconnect')
+
+
+def simulate_log_update(client: MockClient):
+    my_data = {'ae483log.o_x': 1.2, 'ae483log.o_y': 3.7, 'ae483log.o_z': 0.72}
+
+    print('Starting simulate log update')
+    print(my_data.keys())
+    while True:
+        print('sending logs to client')
+        time.sleep(0.5)
+        client.log_data(timestamp='time', data=my_data, logconf=client.logconfs[0])
