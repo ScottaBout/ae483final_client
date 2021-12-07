@@ -13,7 +13,7 @@ from cflib.crazyflie.log import LogConfig
 from drone_data import DroneData
 
 uri = 'radio://0/35/2M/E7E7E7E7E7'
-BRAIN_IP = '10.183.6.164'  # TODO enter ip of brain
+BRAIN_IP = '172.20.10.7'  # TODO enter ip of brain
 BRAIN_PORT = '8100'
 CLIENT_PORT = '8080'
 DRONE_ID = '0'

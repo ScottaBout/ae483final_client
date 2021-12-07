@@ -9,7 +9,7 @@ from drone_client import drone_data, BRAIN_IP, DRONE_ID, BRAIN_PORT, SimpleClien
 
 logging.basicConfig(level=logging.DEBUG)
 
-TESTING = True
+TESTING = True  # change to FALSE if working with drones
 
 send_to_drone = True  # as long as this is true, the client will send position set point updates to the drone
 
@@ -57,6 +57,11 @@ def send_target_to_drone(client):
     client.disconnect()
 
 
+def app_run():
+    logging.info('Starting Client web server')
+    app.run(host='0.0.0.0', port=int(CLIENT_PORT), debug=True)
+
+
 if __name__ == '__main__':
     if BRAIN_IP == '':
         logging.critical('IP_OF_BRAIN not set')
@@ -70,7 +75,9 @@ if __name__ == '__main__':
             cflib.crtp.init_drivers()
 
         #  Create and start the Client that will connect to the drone
-        client = MockClient(uri, use_controller=True, use_observer=True) if TESTING else SimpleClient(uri, use_controller=True, use_observer=True)
+        client = MockClient(uri, use_controller=True, use_observer=False) if TESTING else SimpleClient(uri,
+                                                                                                       use_controller=True,
+                                                                                                       use_observer=True)
         while not client.is_connected:
             logging.debug(f' ... connecting ...')
             time.sleep(1.0)
@@ -79,5 +86,9 @@ if __name__ == '__main__':
         thread = threading.Thread(target=send_target_to_drone, args=(client,))
         thread.start()
 
-        logging.info('Starting Client web server')
-        app.run(host='0.0.0.0', port=int(CLIENT_PORT), debug=True)
+        logging.info('Starting app_run thread')
+        thread2 = threading.Thread(target=app_run)
+        thread2.start()
+
+        while True:
+            time.sleep(1)
