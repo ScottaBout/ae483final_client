@@ -83,6 +83,7 @@ class SimpleClient:
         self.is_connected = False
         self.data = {}
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.packets = 0
 
     def connected(self, uri):
         print(f'Connected to {uri}')
@@ -155,7 +156,7 @@ class SimpleClient:
             if v.name == 'ae483log.o_z':
                 drone_data.z = data[v.name]
                 modified = True
-        if modified:
+        if modified and self.packets % 30:
             # send to drone only if any of the drone x, y, z data has changed
             position = struct.pack('ifff', DRONE_ID, drone_data.x, drone_data.y, drone_data.z)
             b = self.socket.sendto(position, (BRAIN_IP, int(BRAIN_PORT)))
