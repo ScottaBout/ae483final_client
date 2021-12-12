@@ -7,15 +7,13 @@ from multiprocessing import Process, Queue
 from queue import Empty
 
 import cflib.crtp
-from flask import Flask
 
 from drone_client import BRAIN_IP, DRONE_ID, BRAIN_PORT, SimpleClient, CLIENT_PORT, uri, MockClient
 
 LOGLEVEL = logging.DEBUG
 TESTING = True  # change to FALSE if working with drones
 
-# end of constants
-app = Flask(__name__)  # Web server listening to brain
+
 
 
 def socket_listener(queue: Queue):
@@ -68,12 +66,12 @@ def send_target_to_drone(queue: Queue):
         try:
             targets = queue.get(block=False)
             logging.debug(f'moving drone to {targets}')
-            client.move(targets[0], targets[1], targets[2], 0, 0.01)
+            client.move(targets[0], targets[1], targets[2], 0, 0.1)
             if targets[2] < 0:
                 # land drone if z target is < 0
                 break
         except Empty:
-            time.sleep(0.01)
+            time.sleep(0.1)
     logging.info('Landing drone')
     client.move(0, 0, 0.5, 0, 5)
     client.stop(5)
@@ -104,6 +102,7 @@ def main():
         process.start()
 
         thread.join()  # waits until send_target_to_drone ends
+        process.join()
         logging.info('Client is finished')
 
 
