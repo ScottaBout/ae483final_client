@@ -11,7 +11,7 @@ import cflib.crtp
 from drone_client import BRAIN_IP, DRONE_ID, BRAIN_PORT, SimpleClient, CLIENT_PORT, uri, MockClient
 
 LOGLEVEL = logging.DEBUG
-TESTING = True  # change to FALSE if working with drones
+TESTING = False  # change to FALSE if working with drones
 
 
 
@@ -37,7 +37,8 @@ def socket_listener(queue: Queue):
                     # struct contains 3 floats, representing target x, y and z
                     targets = struct.unpack('fff', data)  # convert the received data from bytes to float
                     logging.debug(f'Received targets {targets} from Brain')
-                    queue.put(targets)  # push into queue, read by main process
+                    if queue.empty():
+                        queue.put(targets)  # push into queue, read by main process
                     if targets[2] < 0:
                         # end if target_z < 0
                         break
