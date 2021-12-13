@@ -58,7 +58,7 @@ def send_target_to_drone(queue: Queue):
     #  Create and start the Client that will connect to the drone
     client = MockClient(uri, use_controller=True, use_observer=False) if TESTING else SimpleClient(uri,
                                                                                                    use_controller=True,
-                                                                                                   use_observer=True)
+                                                                                                   use_observer=False)
     while not client.is_connected:
         logging.debug(f' ... connecting to CrazyFlie drone client ...')
         time.sleep(1.0)

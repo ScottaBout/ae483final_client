@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 # channel is X, the uri should be 'radio://0/X/2M/E7E7E7E7E7')
 from drone_data import DroneData
 
-uri = 'radio://0/35/2M/E7E7E7E7E7'
+uri = 'radio://1/13/2M/E7E7E7E7E7'
 BRAIN_IP = '10.183.5.60'  # TODO enter ip of brain
 BRAIN_PORT = '8100'
 CLIENT_PORT = '8080'
@@ -147,18 +147,18 @@ class SimpleClient:
         for v in logconf.variables:
             self.data[v.name]['time'].append(timestamp)
             self.data[v.name]['data'].append(data[v.name])
-            if v.name == 'ae483log.o_x':
+            if v.name == 'stateEstimate.x':
                 drone_data.x = data[v.name]
                 modified = True
-            if v.name == 'ae483log.o_y':
+            if v.name == 'stateEstimate.y':
                 drone_data.y = data[v.name]
                 modified = True
-            if v.name == 'ae483log.o_z':
+            if v.name == 'stateEstimate.z':
                 drone_data.z = data[v.name]
                 modified = True
         if modified:
             self.packets += 1
-            if self.packets % 30:
+            if self.packets % 30 == 0:
                 # send to drone only if any of the drone x, y, z data has changed
                 position = struct.pack('ifff', DRONE_ID, drone_data.x, drone_data.y, drone_data.z)
                 b = self.socket.sendto(position, (BRAIN_IP, int(BRAIN_PORT)))
@@ -256,7 +256,7 @@ def simulate_log_update(client: MockClient):
 
     print('Starting simulate log update')
     while client.is_connected:
-        time.sleep(0.5)
+        time.sleep(0.01)
         my_data = {'ae483log.o_x': drone_data.x,
                    'ae483log.o_y': drone_data.y,
                    'ae483log.o_z': drone_data.z}
