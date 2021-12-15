@@ -11,9 +11,11 @@ import cflib.crtp
 from drone_client import BRAIN_IP, DRONE_ID, BRAIN_PORT, SimpleClient, CLIENT_PORT, uri, MockClient
 
 LOGLEVEL = logging.DEBUG
-TESTING = True  # change to FALSE if working with drones
+TESTING = False  # Specify whether or not user is testing. False if connecting to drone
 
-
+"""
+RUN THIS FILE TO RUN THE CLIENT
+"""
 
 
 def socket_listener(queue: Queue):
@@ -37,7 +39,8 @@ def socket_listener(queue: Queue):
                     # struct contains 3 floats, representing target x, y and z
                     targets = struct.unpack('fff', data)  # convert the received data from bytes to float
                     logging.debug(f'Received targets {targets} from Brain')
-                    queue.put(targets)  # push into queue, read by main process
+                    if queue.empty():
+                        queue.put(targets)  # push into queue, read by main process
                     if targets[2] < 0:
                         # end if target_z < 0
                         break
@@ -57,21 +60,18 @@ def send_target_to_drone(queue: Queue):
     #  Create and start the Client that will connect to the drone
     client = MockClient(uri, use_controller=True, use_observer=False) if TESTING else SimpleClient(uri,
                                                                                                    use_controller=True,
-                                                                                                   use_observer=True)
+                                                                                                   use_observer=False)
     while not client.is_connected:
         logging.debug(f' ... connecting to CrazyFlie drone client ...')
         time.sleep(1.0)
     logging.info('CrazyFlie drone client connected')
     while True:
-        try:
-            targets = queue.get(block=False)
-            logging.debug(f'moving drone to {targets}')
-            client.move(targets[0], targets[1], targets[2], 0, 0.1)
-            if targets[2] < 0:
-                # land drone if z target is < 0
-                break
-        except Empty:
-            time.sleep(0.1)
+        targets = queue.get()
+        logging.debug(f'moving drone to {targets}')
+        client.move(targets[0], targets[1], targets[2], 0, 0.1)
+        if targets[2] < 0:
+            # land drone if z target is < 0
+            break
     logging.info('Landing drone')
     client.move(0, 0, 0.5, 0, 5)
     client.stop(5)

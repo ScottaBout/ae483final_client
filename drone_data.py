@@ -1,4 +1,6 @@
-import math
+"""
+Class that holds information about drones. No need to run.
+"""
 
 
 class DroneData:
@@ -11,9 +13,6 @@ class DroneData:
         self.target_x = 0.0
         self.target_y = 0.0
         self.target_z = 0.0
-        self.opti_x = 0.0  # brain x
-        self.opti_y = 0.0  # brain y
-        self.opti_z = 0.0  # brain z
         self.start_x = None  # brain starting x
         self.start_y = None  # brain starting y
         self.start_z = None  # brain starting z
@@ -27,8 +26,6 @@ class DroneData:
             'target_x': str(self.target_x),
             'target_y': str(self.target_y),
             'target_z': str(self.target_z),
-            'opti_x': str(self.opti_x),
-            'opti_y': str(self.opti_y),
             'start_x': str(self.start_x),
             'start_y': str(self.start_y),
             'start_z': str(self.start_z)
@@ -42,21 +39,6 @@ class DroneData:
 
     def real_z(self):
         return self.z
-
-    def distance(self, other):
-        return math.sqrt((self.real_x() - other.real_x()) ** 2 + (self.real_y() - other.real_y()) ** 2 + (
-                self.real_z() - other.real_z()) ** 2)
-
-    def distance_xy(self, other):
-        return math.sqrt((self.real_x() - other.real_x()) ** 2 + (self.real_y() - other.real_y()) ** 2)
-
-    def heading(self, other):
-        return math.atan2(self.real_y() - other.real_y(), self.real_x() - other.real_x())
-
-    def relative(self, distance_xy, heading):
-        y = distance_xy * math.sin(heading)
-        x = distance_xy * math.cos(heading)
-        return self.real_x() + x, self.real_y() + y
 
     def set_target(self, x, y, z):
         """
