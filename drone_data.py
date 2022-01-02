@@ -5,15 +5,15 @@ class DroneData:
 
     def __init__(self):
         self.ip = ''
-        self.x = 0  # drone x
-        self.y = 0  # drone y
-        self.z = 0  # drone z
-        self.target_x = 0
-        self.target_y = 0
-        self.target_z = 0
-        self.opti_x = 0  # brain x
-        self.opti_y = 0  # brain y
-        self.opti_z = 0  # brain z
+        self.x = 0.0  # drone x
+        self.y = 0.0  # drone y
+        self.z = 0.0  # drone z
+        self.target_x = 0.0
+        self.target_y = 0.0
+        self.target_z = 0.0
+        self.opti_x = 0.0  # brain x
+        self.opti_y = 0.0  # brain y
+        self.opti_z = 0.0  # brain z
         self.start_x = None  # brain starting x
         self.start_y = None  # brain starting y
         self.start_z = None  # brain starting z
@@ -35,13 +35,13 @@ class DroneData:
         }
 
     def real_x(self):
-        return self.opti_x
+        return self.x
 
     def real_y(self):
-        return self.opti_y
+        return self.y
 
     def real_z(self):
-        return self.opti_z
+        return self.z
 
     def distance(self, other):
         return math.sqrt((self.real_x() - other.real_x()) ** 2 + (self.real_y() - other.real_y()) ** 2 + (

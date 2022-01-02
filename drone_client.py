@@ -1,25 +1,27 @@
 import json
 import logging
+import socket
+import struct
 import threading
 import time
 
 import numpy as np
-import requests
 from cflib.crazyflie import Crazyflie
 from cflib.crazyflie.log import LogConfig
+
+import matplotlib.pyplot as plt
 
 # Specify the uri of the drone to which we want to connect (if your radio
 # channel is X, the uri should be 'radio://0/X/2M/E7E7E7E7E7')
 from drone_data import DroneData
 
-uri = 'radio://0/35/2M/E7E7E7E7E7'
-BRAIN_IP = '172.20.10.7'  # TODO enter ip of brain
+uri = 'radio://1/13/2M/E7E7E7E7E7'
+BRAIN_IP = '10.183.5.60'  # TODO enter ip of brain
 BRAIN_PORT = '8100'
 CLIENT_PORT = '8080'
-DRONE_ID = '0'
+DRONE_ID = 0
 
 drone_data = DroneData()
-
 
 # Specify the variables we want to log (all at 100 Hz)
 variables = [
@@ -80,6 +82,8 @@ class SimpleClient:
         self.cf.open_link(uri)
         self.is_connected = False
         self.data = {}
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.packets = 0
 
     def connected(self, uri):
         print(f'Connected to {uri}')
@@ -139,33 +143,27 @@ class SimpleClient:
 
     def log_data(self, timestamp, data, logconf):
         logging.info('Logging data, sending to Brain if modified')
-        logging.debug(logconf.variables)
         modified = False  # will be set to true if x, y or z is modified
         for v in logconf.variables:
             self.data[v.name]['time'].append(timestamp)
             self.data[v.name]['data'].append(data[v.name])
-            if v.name == 'ae483log.o_x':
+            if v.name == 'stateEstimate.x':
                 drone_data.x = data[v.name]
                 modified = True
-            if v.name == 'ae483log.o_y':
+            if v.name == 'stateEstimate.y':
                 drone_data.y = data[v.name]
                 modified = True
-            if v.name == 'ae483log.o_z':
+            if v.name == 'stateEstimate.z':
                 drone_data.z = data[v.name]
                 modified = True
         if modified:
-            # send to drone only if any of the drone x, y, z data has changed
-            payload = drone_data.string_dict()
-            payload['drone_id'] = DRONE_ID
-            try:
-                response = requests.get(f'http://{BRAIN_IP}:{BRAIN_PORT}/drone_data', params=payload)
-                if response.status_code != 200:
-                    logging.warning(f'Error code sending drone_data to Brain {response.status_code}')
-                else:
-                    logging.info(f'Successfully sent drone_data: {drone_data}')
-                    logging.info(f'Brain response: {response.content}')
-            except (requests.exceptions.RequestException, ConnectionError) as err:
-                logging.warning(f'Error sending request to Brain: {err}')
+            self.packets += 1
+            if self.packets % 30 == 0:
+                # send to drone only if any of the drone x, y, z data has changed
+                position = struct.pack('ifff', DRONE_ID, drone_data.x, drone_data.y, drone_data.z)
+                b = self.socket.sendto(position, (BRAIN_IP, int(BRAIN_PORT)))
+                logging.info(
+                    f'Successfully sent {b} bytes drone id+position: {(DRONE_ID, drone_data.x, drone_data.y, drone_data.z)}')
         else:
             # if no relevant data was modified
             logging.debug('Log data did not contain data to send to Brain')
@@ -232,19 +230,34 @@ class MockClient(SimpleClient):
         logging.info('Mock stop')
 
     def move(self, x, y, z, yaw, dt):
-        logging.info('Mock move')
-        time.sleep(1.0)
+        r = 0.1
+        drone_data.target_x = x
+        drone_data.target_y = y
+        drone_data.target_z = z
+        drone_data.x = (drone_data.target_x - drone_data.x) * r + drone_data.x
+        drone_data.y = (drone_data.target_y - drone_data.y) * r + drone_data.y
+        drone_data.z = (drone_data.target_z - drone_data.z) * r + drone_data.z
+        logging.info(f'Mock move target {drone_data.target_x, drone_data.target_y, drone_data.target_z}')
+        logging.info(f'Mock move to {drone_data.x, drone_data.y, drone_data.z}')
+        time.sleep(0.1)
 
     def disconnect(self):
         logging.info('Mock disconnect')
+        self.is_connected = False  # stops mock logging
+        x = self.data['ae483log.o_x']['data']
+        y = self.data['ae483log.o_y']['data']
+        # plt.scatter(x, y)
+        # plt.show()
+
 
 
 def simulate_log_update(client: MockClient):
-    my_data = {'ae483log.o_x': 1.2, 'ae483log.o_y': 3.7, 'ae483log.o_z': 0.72}
+
 
     print('Starting simulate log update')
-    print(my_data.keys())
-    while True:
-        print('sending logs to client')
-        time.sleep(0.5)
+    while client.is_connected:
+        time.sleep(0.01)
+        my_data = {'ae483log.o_x': drone_data.x,
+                   'ae483log.o_y': drone_data.y,
+                   'ae483log.o_z': drone_data.z}
         client.log_data(timestamp='time', data=my_data, logconf=client.logconfs[0])
